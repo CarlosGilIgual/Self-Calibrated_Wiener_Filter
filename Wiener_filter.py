@@ -36,84 +36,15 @@ def signal_fraction(x, y):
     return Fs
 
 
-# VARIANCE
-def variance(dat):
-    
-    var = np.array(dat)
-    mean = np.array(dat)
-    dim = len(var.shape)
-    
-    if dim==1:
-        mean[:-1] += dat[1:]
-        mean[1:] += dat[:-1]
-        mean[1:-1] /= 3
-        mean[0] /= 2
-        mean[-1] /= 2
-        
-        var = (var - mean)**2
-        var[:-1] += (dat[1:] - mean[:-1])**2
-        var[1:] += (dat[:-1] - mean[1:])**2
-        var[1:-1] /= 3
-        var[0] /= 2
-        var[-1] /= 2
-        
-    elif dim==2:
-        mean[:-1,:] += dat[1:,:]
-        mean[1:,:] += dat[:-1,:]
-        mean[:,:-1] += dat[:,1:]
-        mean[:,1:] += dat[:,:-1]
-        mean[1:-1,1:-1] /= 5
-        mean[0,1:-1] /= 4
-        mean[-1,1:-1] /= 4
-        mean[1:-1,0] /= 4
-        mean[1:-1,-1] /= 4
-        mean[0,0] /= 3
-        mean[-1,-1] /= 3
-        mean[0,-1] /= 3
-        mean[-1,0] /= 3
-        
-        var = (var - mean)**2
-        var[:-1,:] += (dat[1:,:] - mean[:-1,:])**2
-        var[1:,:] += (dat[:-1,:] - mean[1:,:])**2
-        var[:,:-1] += (dat[:,1:] - mean[:,:-1])**2
-        var[:,1:] += (dat[:,:-1] - mean[:,1:])**2
-        var[1:-1,1:-1] /= 5
-        var[0,1:-1] /= 4
-        var[-1,1:-1] /= 4
-        var[1:-1,0] /= 4
-        var[1:-1,-1] /= 4
-        var[0,0] /= 3
-        var[-1,-1] /= 3
-        var[0,-1] /= 3
-        var[-1,0] /= 3
-        
-    else:
-        print("Warning: Size of array not supported")
-        
-    return var
-
-
-# WIENER FILTER
-def Wiener_filter(dat, sigma):
+# FILTER
+def Wiener_filter(dat):
     
     
     # DATA DIMENSION
     dim = len(dat.shape)
     
     
-    # SIGMA DIMENSION CHECKING
-    sigma_check = True
-    if type(sigma) == (int or float or np.float64):
-        sigma *= np.ones(dat.shape)
-    elif type(sigma) != np.ndarray:
-        print('Warning: Only an integer, a float or an array are a valid sigma')
-        sigma_check = False
-    elif sigma.shape != dat.shape:
-        print('Warning: sigma shape does not agree with dat shape')
-        sigma_check = False
-    
-    
-    if (dim == 2) and (sigma_check == True):
+    if (dim == 2):
         
         # DATA-FFT PARAMETERS (POWER AND FREQUENCY)
         y_FFT = np.fft.fft2(dat)
@@ -121,7 +52,6 @@ def Wiener_filter(dat, sigma):
         k_y = np.fft.fftfreq(y_FFT.shape[0], d=2)
         k_x = np.fft.fftfreq(y_FFT.shape[1], d=2)
         K2 = (k_y**2)[:,np.newaxis] + (k_x**2)[np.newaxis,:]
-        sigma_FFT = np.fft.fft2(sigma)
         
         # POWER HISTOGRAM
         n_P, bins = np.histogram(power.flatten(), bins=np.logspace(np.min(np.log10(power)), np.max(np.log10(power)), 101))
@@ -154,16 +84,13 @@ def Wiener_filter(dat, sigma):
         Wiener = np.sqrt(np.interp(abs(y_FFT), P, Fs_P) * np.interp(K2, K2_average, Fs_K2_average))
         y_FFT_filtered = y_FFT * Wiener
         y_filtered = np.real(np.fft.ifft2(y_FFT_filtered))
-        sigma_FFT_filtered = sigma_FFT * Wiener
-        sigma_filtered = np.real(np.fft.ifft2(sigma_FFT_filtered))
         
-    elif (dim == 1) and (sigma_check == True):
+    elif (dim == 1):
         
         # DATA-FFT PARAMETERS (POWER AND FREQUENCY)
         y_FFT = np.fft.fft(dat)
         power = np.abs(y_FFT)
         K2 = np.fft.fftfreq(y_FFT.shape[0], d=2)**2
-        sigma_FFT = np.fft.fft(sigma)
         
         # POWER HISTOGRAM
         n_P, bins = np.histogram(power.flatten(), bins=np.logspace(np.min(np.log10(power)), np.max(np.log10(power)), 101))
@@ -194,11 +121,9 @@ def Wiener_filter(dat, sigma):
         Wiener = np.sqrt(np.interp(abs(y_FFT), P, Fs_P) * np.interp(K2, K2_average, Fs_K2_average))
         y_FFT_filtered = y_FFT * Wiener
         y_filtered = np.real(np.fft.ifft(y_FFT_filtered))
-        sigma_FFT_filtered = sigma_FFT * Wiener
-        sigma_filtered = np.real(np.fft.ifft(sigma_FFT_filtered))
         
     elif (dim != 1) or (dim != 2):
         print("Warning: Size of array not supported")
     
     
-    return y_filtered, sigma_filtered
+    return y_filtered
